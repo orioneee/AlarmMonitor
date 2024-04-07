@@ -75,7 +75,7 @@ def pushFinishAlarm():
     message = messaging.MulticastMessage(
         data={
             "type": "alarm",
-            "isStarting": "1",
+            "isStarting": "0",
         },
         tokens=registration_ids,
     )
@@ -182,7 +182,7 @@ def synchronizeAlarms(request):
     url = "https://api.ukrainealarm.com/api/v3/alerts/"
 
     headers = {
-        'Authorization': api_key,
+        'authorization': api_key,
         'Content-Type': 'application/json'
     }
 
