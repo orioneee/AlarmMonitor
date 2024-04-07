@@ -70,10 +70,6 @@ def pushFinishAlarm():
     registration_ids = [token.fcmToken for token in fcmTokens]
     print(registration_ids)
     message = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title="Alarm is over",
-            body="Alarm is over",
-        ),
         data={
             "type": "alarm",
             "isStarting": "1",
