@@ -36,9 +36,12 @@ def hasActiveAlarms(request, regionId):
 
 
 def sendMessageToTg(message):
-    token = Token.objects.get(type='bot').token
-    bot = telebot.TeleBot(token)
-    bot.send_message(admin_id, message)
+    try:
+        token = Token.objects.get(type='bot').token
+        bot = telebot.TeleBot(token)
+        bot.send_message(admin_id, message)
+    except Exception as e:
+        print(e)
 
 
 @csrf_exempt
