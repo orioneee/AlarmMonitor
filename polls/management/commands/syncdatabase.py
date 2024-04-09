@@ -35,8 +35,8 @@ class Command(BaseCommand):
         self.stdout.write("Synchronizing database")
         self.stdout.write("Loading cities")
         loadCities()
-        for i in range(20):
-            self.stdout.write(f"Waiting for {50 - i} seconds")
+        for i in range(60):
+            self.stdout.write(f"Waiting for {60 - i} seconds")
             time.sleep(1)
         synchronizeAlarms()
         self.stdout.write("Database synchronized")
