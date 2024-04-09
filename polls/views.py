@@ -1,3 +1,5 @@
+import datetime
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render
 
@@ -19,6 +21,18 @@ vinnitsiaId = 4
 
 def index(request):
     return JsonResponse({'foo': 'bar'}, status=200)
+
+@csrf_exempt
+def registerFcmToken(request):
+    body = request.body.decode('utf-8')
+    data = json.loads(body)
+    fcmToken = data.get('fcmToken')
+    user_id = data.get('user_id')
+    expiredAt = datetime.datetime.now() + datetime.timedelta(days=60)
+    fcmTokenObj = userFcmToken(user_id=user_id, fcmToken=fcmToken, expiredAt=expiredAt)
+    fcmTokenObj.save()
+
+    return JsonResponse({'status': 'ok'}, status=200)
 
 
 def hasActiveAlarms(request, regionId):
