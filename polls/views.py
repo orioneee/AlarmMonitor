@@ -14,13 +14,12 @@ from firebase_admin import messaging
 from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms, sendMessageToTg
 from polls.models import Region, activeAlarms, userFcmToken
 
-
-
 vinnitsiaId = 4
 
 
 def index(request):
     return JsonResponse({'foo': 'bar'}, status=200)
+
 
 @csrf_exempt
 def registerFcmToken(request):
@@ -28,8 +27,14 @@ def registerFcmToken(request):
     data = json.loads(body)
     fcmToken = data.get('fcmToken')
     user_id = data.get('user_id')
+
+    # check if token already exists
+    fcmTokenObj = userFcmToken.objects.filter(fcmToken=fcmToken).first()
+    if fcmTokenObj:
+        return JsonResponse({'status': 'Token already exists'}, status=200)
     expiredAt = datetime.datetime.now() + datetime.timedelta(days=60)
     fcmTokenObj = userFcmToken(user_id=user_id, fcmToken=fcmToken, expiredAt=expiredAt)
+
     fcmTokenObj.save()
 
     return JsonResponse({'status': 'ok'}, status=200)
@@ -139,7 +144,6 @@ def syncAlarms(request):
         return JsonResponse({'status': 'ok'}, status=200)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
-
 
 
 def static(request, path):
