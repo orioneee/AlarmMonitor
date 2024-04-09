@@ -24,8 +24,8 @@ urlpatterns = [
     path('', views.index),
     path('hook/', views.hook),
     path('alarmHook/', views.alarmHook),
-    path('loadCities/', views.loadCities),
+    path('loadCities/', views.syncCities),
     path('hasActiveAlarms/<int:regionId>/', views.hasActiveAlarms),
-    path('synchrinizeAlarms/', views.synchronizeAlarms),
+    path('synchrinizeAlarms/', views.syncAlarms),
     path('static/<path:path>', views.static),
 ]

@@ -1,19 +1,18 @@
-import requests
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render
 
 # Create your views here.
 
-from django.http import HttpResponse, JsonResponse
-import telebot
+from django.http import JsonResponse
 import json
 
 from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import messaging
 
-from polls.models import Token, Region, activeAlarms, userFcmToken
+from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms, sendMessageToTg
+from polls.models import Region, activeAlarms, userFcmToken
 
-admin_id = 800918003
+
 
 vinnitsiaId = 4
 
@@ -33,15 +32,6 @@ def hasActiveAlarms(request, regionId):
         return JsonResponse({'hasActiveAlarms': True}, status=200)
     else:
         return JsonResponse({'hasActiveAlarms': False}, status=200)
-
-
-def sendMessageToTg(message):
-    try:
-        token = Token.objects.get(type='bot').token
-        bot = telebot.TeleBot(token)
-        bot.send_message(admin_id, message)
-    except Exception as e:
-        print(e)
 
 
 @csrf_exempt
@@ -121,106 +111,21 @@ def alarmHook(request):
     return JsonResponse({'status': 'ok'}, status=200)
 
 
-def loadCities(request):
+def syncCities(request):
     try:
-        api_key = Token.objects.get(type='api').token
-    except Token.DoesNotExist:
-        return JsonResponse({'error': 'API token not found'}, status=400)
-
-    url = "https://api.ukrainealarm.com/api/v3/regions"
-    headers = {
-        'Authorization': api_key,
-        'Content-Type': 'application/json'
-    }
-
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        return JsonResponse({
-            "error": "Failed to get regions from API",
-            "response": response.text
-        }, status=response.status_code)
-    data = response.json()
-
-    states = data.get('states', [])
-    Region.objects.all().delete()
-
-    for state in states:
-        regionId = state['regionId']
-        regionName = state['regionName']
-        regionType = state['regionType']
-
-        parent_region = Region(regionId=regionId, regionName=regionName, regionType=regionType)
-        parent_region.save()
-
-        if state.get('regionChildIds'):
-            for child1 in state['regionChildIds']:
-                childId = child1['regionId']
-                childName = child1['regionName']
-                childType = child1['regionType']
-
-                child_region = Region(regionId=childId, regionName=childName, regionType=childType,
-                                      childrenOf=parent_region)
-                child_region.save()
-
-                if child1.get('regionChildIds'):
-                    for child2 in child1['regionChildIds']:
-                        childId = child2['regionId']
-                        childName = child2['regionName']
-                        childType = child2['regionType']
-
-                        # Create the grandchild Region object with parent reference
-                        grandchild_region = Region(regionId=childId, regionName=childName, regionType=childType,
-                                                   childrenOf=child_region)
-                        grandchild_region.save()
-
-    return JsonResponse({'status': 'ok'}, status=200)
+        loadCities()
+        return JsonResponse({'status': 'ok'}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 
-def synchronizeAlarms(request):
-    api_key = Token.objects.get(type='api').token
+def syncAlarms(request):
+    try:
+        synchronizeAlarms()
+        return JsonResponse({'status': 'ok'}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
-    url = "https://api.ukrainealarm.com/api/v3/alerts/"
-
-    headers = {
-        'authorization': api_key,
-        'Content-Type': 'application/json'
-    }
-
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        return JsonResponse({
-            "error": "Failed to get alarms from API",
-            "response": response.text
-        }, status=response.status_code)
-
-    sendMessageToTg(json.dumps(response.json(), indent=4))
-    data = response.json()
-
-    sendMessageToTg(json.dumps(data, indent=4))
-
-    for alarm in data:
-        regionId = alarm['regionId']
-
-        try:
-            regionN = Region.objects.get(regionId=regionId)
-        except ObjectDoesNotExist:
-            continue
-
-        alerts = alarm["activeAlerts"]
-
-        for alert in alerts:
-            regionIdn = alert['regionId']
-            alarmType = alert['type']
-            createdAt = alert['lastUpdate']
-
-            try:
-                regionN = Region.objects.get(regionId=regionIdn)
-            except ObjectDoesNotExist:
-                continue
-            activeAlarm = activeAlarms(region=regionN, type=alarmType, createdAt=createdAt)
-            activeAlarm.save()
-
-    return JsonResponse({'status': 'ok'}, status=200)
 
 
 def static(request, path):
