@@ -15,7 +15,7 @@ class RegionAdmin(admin.ModelAdmin):
 class activeAlarmsAdmin(admin.ModelAdmin):
     list_display = ('id', 'region', 'createdAt', 'type')
 
-    ordering = ('createdAt',)
+    ordering = ('-createdAt',)
 
 
 class userFcmTokenAdmin(admin.ModelAdmin):
