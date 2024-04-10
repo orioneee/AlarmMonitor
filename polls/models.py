@@ -20,7 +20,7 @@ class Region(models.Model):
         return self.regionName
 
 
-class activeAlarms(models.Model):
+class ActiveAlarm(models.Model):
     types = (
         ("UNKNOWN", "UNKNOWN"),
         ("AIR", "AIR"),
@@ -30,13 +30,12 @@ class activeAlarms(models.Model):
         ("NUCLEAR", "NUCLEAR"),
         ("INFO", "INFO")
     )
-    id = models.IntegerField(primary_key=True, auto_created=True)
     region = models.ForeignKey(Region, on_delete=models.CASCADE)
     createdAt = models.DateTimeField()
     type = models.CharField(max_length=100, choices=types)
 
 
-class userFcmToken(models.Model):
+class UserFcmToken(models.Model):
     user_id = models.IntegerField()
     fcmToken = models.CharField(max_length=500)
     expiredAt = models.DateTimeField()

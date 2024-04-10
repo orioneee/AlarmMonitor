@@ -3,6 +3,8 @@ import os
 import requests
 from django.core.management import BaseCommand
 
+from Secrets import API_TOKEN
+
 
 class Command(BaseCommand):
 
@@ -14,10 +16,9 @@ def applyApiHook():
     body = {
         "webHookUrl": "https://alarmmonitor.onrender.com/alarmHook/"
     }
-    api_key = os.getenv('API_TOKEN')
     url = "https://api.ukrainealarm.com/api/v3/webhook"
     headers = {
-        'authorization': api_key,
+        'authorization': API_TOKEN,
         'Content-Type': 'application/json'
     }
     r = requests.post(url, json=body, headers=headers)

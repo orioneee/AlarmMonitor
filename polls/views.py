@@ -15,7 +15,7 @@ from firebase_admin import messaging
 
 from polls.management.commands.applyapihook import applyApiHook
 from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms, sendMessageToTg
-from polls.models import Region, activeAlarms, userFcmToken
+from polls.models import Region, ActiveAlarm, UserFcmToken
 
 vinnitsiaId = 4
 
@@ -32,11 +32,11 @@ def registerFcmToken(request):
     user_id = data.get('user_id')
 
     # check if token already exists
-    fcmTokenObj = userFcmToken.objects.filter(fcmToken=fcmToken).first()
+    fcmTokenObj = UserFcmToken.objects.filter(fcmToken=fcmToken).first()
     if fcmTokenObj:
         return JsonResponse({'status': 'Token already exists'}, status=200)
     expiredAt = datetime.datetime.now() + datetime.timedelta(days=60)
-    fcmTokenObj = userFcmToken(user_id=user_id, fcmToken=fcmToken, expiredAt=expiredAt)
+    fcmTokenObj = UserFcmToken(user_id=user_id, fcmToken=fcmToken, expiredAt=expiredAt)
 
     fcmTokenObj.save()
 
@@ -49,7 +49,7 @@ def hasActiveAlarms(request, regionId):
     except ObjectDoesNotExist:
         return JsonResponse({'error': 'Region not found'}, status=400)
 
-    alarms = activeAlarms.objects.filter(region=region).all()
+    alarms = ActiveAlarm.objects.filter(region=region).all()
     if alarms:
         return JsonResponse({'hasActiveAlarms': True}, status=200)
     else:
@@ -77,7 +77,7 @@ def hook(request):
 
 
 def pushNewAlarm():
-    fcmTokens = userFcmToken.objects.all()
+    fcmTokens = UserFcmToken.objects.all()
     registration_ids = [token.fcmToken for token in fcmTokens]
     print(registration_ids)
     message = messaging.MulticastMessage(
@@ -93,7 +93,7 @@ def pushNewAlarm():
 
 
 def pushFinishAlarm():
-    fcmTokens = userFcmToken.objects.all()
+    fcmTokens = UserFcmToken.objects.all()
     registration_ids = [token.fcmToken for token in fcmTokens]
     print(registration_ids)
     message = messaging.MulticastMessage(
@@ -123,7 +123,7 @@ def alarmHook(request):
         return JsonResponse({'error': 'Region not found'}, status=200)
 
     if status == "Activate":
-        alarm = activeAlarms(region=region, type=alarmType, createdAt=createdAt)
+        alarm = ActiveAlarm(region=region, type=alarmType, createdAt=createdAt)
         alarm.save()
 
         if regionId == vinnitsiaId:
@@ -132,7 +132,7 @@ def alarmHook(request):
 
     else:
         try:
-            alarms = activeAlarms.objects.filter(region=region).all()
+            alarms = ActiveAlarm.objects.filter(region=region).all()
             if regionId == vinnitsiaId:
                 sendMessageToTg(f"Alarm in Vinnitsia: {alarmType} is over")
                 pushFinishAlarm()

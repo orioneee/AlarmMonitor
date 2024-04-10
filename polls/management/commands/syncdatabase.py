@@ -1,5 +1,3 @@
-import json
-import os
 import time
 
 import requests
@@ -8,9 +6,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from init_env import init_env
+from Secrets import *
 from polls.management.commands.applyapihook import applyApiHook
-from polls.models import Region, activeAlarms
+from polls.models import Region, ActiveAlarm
 from django.contrib.auth.models import User
 
 
@@ -18,17 +16,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write("Initing environment")
-        init_env()
 
         self.stdout.write("Chechking is admin user exists")
         if not User.objects.filter(username='admin').exists():
             self.stdout.write("Admin user not found. Creating admin user")
-            self.stdout.write("Admin login: " + os.getenv("ADMIN_LOGIN") + " Admin email: " + os.getenv(
-                "ADMIN_EMAIL") + " Admin password: " + os.getenv("ADMIN_PASSWORD"))
             User.objects.create_superuser(
-                os.getenv("ADMIN_LOGIN"),
-                os.getenv("ADMIN_EMAIL"),
-                os.getenv("ADMIN_PASSWORD")
+                ADMIN_LOGIN,
+                ADMIN_EMAIL,
+                ADMIN_PASSWORD
             )
             self.stdout.write("Admin user created")
         else:
@@ -51,10 +46,9 @@ class Command(BaseCommand):
 
 
 def loadCities():
-    api_key = os.getenv('API_TOKEN')
     url = "https://api.ukrainealarm.com/api/v3/regions"
     headers = {
-        'Authorization': api_key,
+        'Authorization': API_TOKEN,
         'Content-Type': 'application/json'
     }
 
@@ -101,20 +95,17 @@ admin_id = 800918003
 
 def sendMessageToTg(message):
     try:
-        token = os.getenv('TG_BOT_TOKEN')
-        bot = telebot.TeleBot(token)
+        bot = telebot.TeleBot(TG_BOT_TOKEN)
         bot.send_message(admin_id, message)
     except Exception as e:
         print(e)
 
 
 def synchronizeAlarms():
-    api_key = os.getenv('API_TOKEN')
-
     url = "https://api.ukrainealarm.com/api/v3/alerts/"
 
     headers = {
-        'authorization': api_key,
+        'authorization': API_TOKEN,
         'Content-Type': 'application/json'
     }
 
@@ -123,31 +114,35 @@ def synchronizeAlarms():
     if response.status_code != 200:
         raise CommandError("Failed to get alerts from API")
 
-    sendMessageToTg(json.dumps(response.json(), indent=4))
     data = response.json()
 
-    sendMessageToTg(json.dumps(data, indent=4))
+    with transaction.atomic():
 
-    for alarm in data:
-        regionId = alarm['regionId']
+        ActiveAlarm.objects.all().delete()
 
-        try:
-            regionN = Region.objects.get(regionId=regionId)
-        except ObjectDoesNotExist:
-            continue
-
-        alerts = alarm["activeAlerts"]
-
-        for alert in alerts:
-            regionIdn = alert['regionId']
-            alarmType = alert['type']
-            createdAt = alert['lastUpdate']
-
-            print("Region:", regionIdn, "Type:", alarmType, "Created at:", createdAt)
+        for alarm in data:
+            regionId = alarm['regionId']
 
             try:
-                regionN = Region.objects.get(regionId=regionIdn)
+                regionN = Region.objects.get(regionId=regionId)
             except ObjectDoesNotExist:
                 continue
-            activeAlarm = activeAlarms(region=regionN, type=alarmType, createdAt=createdAt)
-            activeAlarm.save()
+
+            alerts = alarm["activeAlerts"]
+
+            for alert in alerts:
+                regionIdn = alert['regionId']
+                alarmType = alert['type']
+                createdAt = alert['lastUpdate']
+
+                print("Region:", regionIdn, "Type:", alarmType, "Created at:", createdAt)
+
+                try:
+                    regionN = Region.objects.get(regionId=regionIdn)
+                except ObjectDoesNotExist:
+                    continue
+                ActiveAlarm.objects.create(
+                    region=regionN,
+                    createdAt=createdAt,
+                    type=alarmType,
+                )

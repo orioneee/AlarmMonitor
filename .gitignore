@@ -2,7 +2,6 @@
 *.sqlite3
 /.idea/
 key.json
-init_env.py
-
+Secrets.py
 
 
