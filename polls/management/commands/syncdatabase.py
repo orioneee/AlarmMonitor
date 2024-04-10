@@ -6,8 +6,10 @@ import requests
 import telebot
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 
 from init_env import init_env
+from polls.management.commands.applyapihook import applyApiHook
 from polls.models import Region, activeAlarms
 from django.contrib.auth.models import User
 
@@ -39,6 +41,12 @@ class Command(BaseCommand):
             self.stdout.write(f"Waiting for {60 - i} seconds")
             time.sleep(1)
         synchronizeAlarms()
+        for i in range(30):
+            self.stdout.write(f"Waiting for {60 - i} seconds")
+            time.sleep(1)
+
+        print("Applying webhook")
+        applyApiHook()
         self.stdout.write("Database synchronized")
 
 
@@ -57,41 +65,35 @@ def loadCities():
     data = response.json()
 
     states = data.get('states', [])
-    Region.objects.all().delete()
 
-    for state in states:
-        regionId = state['regionId']
-        regionName = state['regionName']
-        regionType = state['regionType']
+    with transaction.atomic():
+        Region.objects.all().delete()
 
-        print("Parent region:", regionId, regionName, regionType)
+        for state in states:
+            parent_region = Region.objects.create(
+                regionId=state['regionId'],
+                regionName=state['regionName'],
+                regionType=state['regionType']
+            )
 
-        parent_region = Region(regionId=regionId, regionName=regionName, regionType=regionType)
-        parent_region.save()
+            if state.get('regionChildIds'):
+                for child1 in state['regionChildIds']:
+                    child_region = Region.objects.create(
+                        regionId=child1['regionId'],
+                        regionName=child1['regionName'],
+                        regionType=child1['regionType'],
+                        childrenOf=parent_region
+                    )
 
-        if state.get('regionChildIds'):
-            for child1 in state['regionChildIds']:
-                childId = child1['regionId']
-                childName = child1['regionName']
-                childType = child1['regionType']
-
-                print("Child region:", childId, childName, childType)
-
-                child_region = Region(regionId=childId, regionName=childName, regionType=childType,
-                                      childrenOf=parent_region)
-                child_region.save()
-
-                if child1.get('regionChildIds'):
-                    for child2 in child1['regionChildIds']:
-                        childId = child2['regionId']
-                        childName = child2['regionName']
-                        childType = child2['regionType']
-
-                        print("Grandchild region:", childId, childName, childType)
-
-                        grandchild_region = Region(regionId=childId, regionName=childName, regionType=childType,
-                                                   childrenOf=child_region)
-                        grandchild_region.save()
+                    if child1.get('regionChildIds'):
+                        for child2 in child1['regionChildIds']:
+                            Region.objects.create(
+                                regionId=child2['regionId'],
+                                regionName=child2['regionName'],
+                                regionType=child2['regionType'],
+                                childrenOf=child_region
+                            )
+    print("Regions saved successfully")
 
 
 admin_id = 800918003

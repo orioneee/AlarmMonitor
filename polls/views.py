@@ -1,5 +1,7 @@
 import datetime
+import os
 
+import requests
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render
 
@@ -11,6 +13,7 @@ import json
 from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import messaging
 
+from polls.management.commands.applyapihook import applyApiHook
 from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms, sendMessageToTg
 from polls.models import Region, activeAlarms, userFcmToken
 
@@ -51,6 +54,18 @@ def hasActiveAlarms(request, regionId):
         return JsonResponse({'hasActiveAlarms': True}, status=200)
     else:
         return JsonResponse({'hasActiveAlarms': False}, status=200)
+
+
+def applyAlarmHook(request):
+    r = applyApiHook()
+    return JsonResponse(
+        {
+            "status": r.status_code == 200,
+            "status_code": r.status_code,
+            "response": r.text
+        },
+        status=r.status_code
+    )
 
 
 @csrf_exempt
