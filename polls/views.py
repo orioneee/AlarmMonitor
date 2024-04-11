@@ -142,6 +142,7 @@ def alarmHook(request):
         except ObjectDoesNotExist:
             return JsonResponse({'error': 'Alarm not found'}, status=200)
 
+    sendMessageToTg(json.dumps(data, indent=4))
     return JsonResponse({'status': 'ok'}, status=200)
 
 
