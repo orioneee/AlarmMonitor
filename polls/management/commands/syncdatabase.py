@@ -1,3 +1,4 @@
+import threading
 import time
 
 import requests
@@ -92,13 +93,17 @@ def loadCities():
 
 admin_id = 800918003
 
-
-def sendMessageToTg(message):
+def threadSendTelegramMessage(message):
     try:
         bot = telebot.TeleBot(TG_BOT_TOKEN)
         bot.send_message(admin_id, message)
     except Exception as e:
         print(e)
+
+def sendMessageToTg(message):
+    thread = threading.Thread(target=threadSendTelegramMessage, args=(message,))
+    thread.start()
+
 
 
 def synchronizeAlarms():

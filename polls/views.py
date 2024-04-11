@@ -1,5 +1,6 @@
 import datetime
 import os
+import threading
 
 import requests
 from django.core.exceptions import ObjectDoesNotExist
@@ -76,7 +77,7 @@ def hook(request):
     return JsonResponse({'status': 'ok'}, status=200)
 
 
-def pushNewAlarm():
+def threadPushNewAlarm(time: str):
     fcmTokens = UserFcmToken.objects.all()
     registration_ids = [token.fcmToken for token in fcmTokens]
     print(registration_ids)
@@ -84,6 +85,7 @@ def pushNewAlarm():
         data={
             "type": "alarm",
             "isStarting": "1",
+            "time": time,
         },
         tokens=registration_ids,
     )
@@ -92,7 +94,12 @@ def pushNewAlarm():
         print(r.exception)
 
 
-def pushFinishAlarm():
+def pushNewAlarm(time: str):
+    thread = threading.Thread(target=threadPushNewAlarm, args=(datatimeToTimeStr(time),))
+    thread.start()
+
+
+def threadPushFinishAlarm(time: str):
     fcmTokens = UserFcmToken.objects.all()
     registration_ids = [token.fcmToken for token in fcmTokens]
     print(registration_ids)
@@ -100,6 +107,7 @@ def pushFinishAlarm():
         data={
             "type": "alarm",
             "isStarting": "0",
+            "time": time,
         },
         tokens=registration_ids,
     )
@@ -108,42 +116,59 @@ def pushFinishAlarm():
         print(r.exception)
 
 
+def pushFinishAlarm(time: str):
+    thread = threading.Thread(target=threadPushFinishAlarm, args=(datatimeToTimeStr(time),))
+    thread.start()
+
+
+def datatimeToTimeStr(dt: str):
+    dt_obj = datetime.datetime.strptime(dt, '%Y-%m-%dT%H:%M:%SZ')
+    time_str = dt_obj.strftime('%H:%M:%S')
+    return time_str
+
+
 @csrf_exempt
 def alarmHook(request):
-    body = request.body.decode('utf-8')
-    data = json.loads(body)
-    status = data.get('status')
-    regionId = data.get('regionId')
-    alarmType = data.get('alarmType')
-    createdAt = data.get('createdAt')
-
     try:
-        region = Region.objects.filter(regionId=regionId).first()
-    except ObjectDoesNotExist:
-        return JsonResponse({'error': 'Region not found'}, status=200)
+        body = request.body.decode('utf-8')
+        data = json.loads(body)
+        status = data.get('status')
+        regionId = data.get('regionId')
+        alarmType = data.get('alarmType')
+        createdAt = data.get('createdAt')
 
-    if status == "Activate":
-        alarm = ActiveAlarm(region=region, type=alarmType, createdAt=createdAt)
-        alarm.save()
-
-        if regionId == vinnitsiaId:
-            sendMessageToTg(f"Alarm in Vinnitsia: {alarmType}")
-            pushNewAlarm()
-
-    else:
         try:
-            alarms = ActiveAlarm.objects.filter(region=region).all()
-            if regionId == vinnitsiaId:
-                sendMessageToTg(f"Alarm in Vinnitsia: {alarmType} is over")
-                pushFinishAlarm()
-
-            for alarm in alarms:
-                alarm.delete()
+            region = Region.objects.filter(regionId=regionId).first()
         except ObjectDoesNotExist:
-            return JsonResponse({'error': 'Alarm not found'}, status=200)
+            return JsonResponse({'error': 'Region not found'}, status=200)
 
-    sendMessageToTg(json.dumps(data, indent=4))
-    return JsonResponse({'status': 'ok'}, status=200)
+        if status == "Activate":
+            alarm = ActiveAlarm(region=region, type=alarmType, createdAt=createdAt)
+            alarm.save()
+
+            if regionId == vinnitsiaId:
+                sendMessageToTg(f"Alarm in Vinnitsia: {alarmType}")
+                pushNewAlarm(createdAt)
+
+        else:
+            try:
+                alarms = ActiveAlarm.objects.filter(region=region).all()
+                if regionId == vinnitsiaId:
+                    sendMessageToTg(f"Alarm in Vinnitsia: {alarmType} is over")
+                    pushFinishAlarm(createdAt)
+
+                for alarm in alarms:
+                    alarm.delete()
+            except ObjectDoesNotExist:
+                return JsonResponse({'error': 'Alarm not found'}, status=200)
+
+        sendMessageToTg(json.dumps(data, indent=4))
+        return JsonResponse({'status': 'ok'}, status=200)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'ok',
+            'error': str(e)
+        }, status=200)
 
 
 def syncCities(request):
