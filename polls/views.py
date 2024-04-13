@@ -44,17 +44,22 @@ def registerFcmToken(request):
     return JsonResponse({'status': 'ok'}, status=200)
 
 
+def hasActiveAlrmInRegion(region: Region):
+    alarms = ActiveAlarm.objects.filter(region=region).all()
+    if len(alarms) > 0:
+        return True
+    if region.childrenOf and region.childrenOf != region:
+        return hasActiveAlrmInRegion(region.childrenOf)
+    return False
+
+
 def hasActiveAlarms(request, regionId):
     try:
         region = Region.objects.get(regionId=regionId)
     except ObjectDoesNotExist:
         return JsonResponse({'error': 'Region not found'}, status=400)
 
-    alarms = ActiveAlarm.objects.filter(region=region).all()
-    if alarms:
-        return JsonResponse({'hasActiveAlarms': True}, status=200)
-    else:
-        return JsonResponse({'hasActiveAlarms': False}, status=200)
+    return JsonResponse({'hasActiveAlarm': hasActiveAlrmInRegion(region)}, status=200)
 
 
 def applyAlarmHook(request):
