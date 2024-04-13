@@ -18,7 +18,7 @@ from polls.management.commands.applyapihook import applyApiHook
 from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms, sendMessageToTg
 from polls.models import Region, ActiveAlarm, UserFcmToken
 
-vinnitsiaId = 4
+vinnitsiaId = 155
 
 
 def index(request):
@@ -100,6 +100,7 @@ def threadPushNewAlarm(time: str):
 
 
 def pushNewAlarm(time: str):
+    print("Pushing new alarm")
     thread = threading.Thread(target=threadPushNewAlarm, args=(datatimeToTimeStr(time),))
     thread.start()
 
@@ -122,6 +123,7 @@ def threadPushFinishAlarm(time: str):
 
 
 def pushFinishAlarm(time: str):
+    print("Pushing finish alarm")
     thread = threading.Thread(target=threadPushFinishAlarm, args=(datatimeToTimeStr(time),))
     thread.start()
 
@@ -130,6 +132,16 @@ def datatimeToTimeStr(dt: str):
     dt_obj = datetime.datetime.strptime(dt, '%Y-%m-%dT%H:%M:%SZ')
     time_str = dt_obj.strftime('%H:%M:%S')
     return time_str
+
+
+def isChild(region: Region, parent: Region):
+    if region == parent:
+        return True
+    if not region.childrenOf:
+        return False
+    if region.childrenOf == parent:
+        return True
+    return isChild(region.childrenOf, parent)
 
 
 @csrf_exempt
@@ -144,30 +156,32 @@ def alarmHook(request):
 
         try:
             region = Region.objects.filter(regionId=regionId).first()
+            vinnitsiaRegion = Region.objects.filter(regionId=vinnitsiaId).first()
         except ObjectDoesNotExist:
             return JsonResponse({'error': 'Region not found'}, status=200)
 
-        if status == "Activate":
-            alarm = ActiveAlarm(region=region, type=alarmType, createdAt=createdAt)
-            alarm.save()
+        sendMessageToTg("In region: " + region.regionName + " alarm is " + (
+            "activated" if status == "Activate" else "deactivated") + " type: " + alarmType)
 
-            if regionId == vinnitsiaId:
-                sendMessageToTg(f"Alarm in Vinnitsia: {alarmType}")
+        print("Is child:", isChild(vinnitsiaRegion, region))
+
+        if status == "Activate":
+            if isChild(vinnitsiaRegion, region):
                 pushNewAlarm(createdAt)
 
+            alarm = ActiveAlarm(region=region, type=alarmType, createdAt=createdAt)
+            alarm.save()
         else:
             try:
-                alarms = ActiveAlarm.objects.filter(region=region).all()
-                if regionId == vinnitsiaId:
-                    sendMessageToTg(f"Alarm in Vinnitsia: {alarmType} is over")
+                if isChild(vinnitsiaRegion, region):
                     pushFinishAlarm(createdAt)
 
+                alarms = ActiveAlarm.objects.filter(region=region).all()
                 for alarm in alarms:
                     alarm.delete()
             except ObjectDoesNotExist:
                 return JsonResponse({'error': 'Alarm not found'}, status=200)
 
-        sendMessageToTg(json.dumps(data, indent=4))
         return JsonResponse({'status': 'ok'}, status=200)
     except Exception as e:
         return JsonResponse({
