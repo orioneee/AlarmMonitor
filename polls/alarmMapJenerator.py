@@ -39,7 +39,9 @@ def create_alarm_map(active_alarm_ids):
     for alarmId in active_alarm_ids:
         print("Adding alarm", alarmId)
         mask = Image.open(f"masks/{alarmId}.png").convert("RGBA")
-        mask = mask.resize(background.size, resample=Image.BILINEAR)
+        if mask.size != background.size:
+            mask = mask.resize(background.size, resample=Image.BILINEAR)
+            mask.save(f"masks/{alarmId}.png")
         background.paste(mask, (0, 0), mask)
 
     background.save("alarm_map.png", "PNG")
