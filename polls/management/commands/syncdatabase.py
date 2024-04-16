@@ -46,6 +46,9 @@ class Command(BaseCommand):
 
         print("Applying webhook")
         applyApiHook()
+
+        states_layer = gpd.read_file("states/ukr_admbnda_adm1_sspe_20230201.shp", encoding='utf-8')
+        generateMap(states_layer)
         self.stdout.write("Database synchronized")
 
 
@@ -91,9 +94,9 @@ def loadCities():
                                 regionType=child2['regionType'],
                                 childrenOf=child_region
                             )
+
     print("Regions saved successfully")
-    states_layer = gpd.read_file("states/ukr_admbnda_adm1_sspe_20230201.shp", encoding='utf-8')
-    generateMap(states_layer)
+
 
 
 
