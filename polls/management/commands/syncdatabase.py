@@ -1,3 +1,4 @@
+import os.path
 import threading
 import time
 
@@ -8,6 +9,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from Secrets import *
+from polls.alarmMapJenerator import generateMap
 from polls.management.commands.applyapihook import applyApiHook
 from polls.models import Region, ActiveAlarm
 from django.contrib.auth.models import User
@@ -90,19 +92,7 @@ def loadCities():
                             )
     print("Regions saved successfully")
 
-
-admin_id = 800918003
-
-def threadSendTelegramMessage(message):
-    try:
-        bot = telebot.TeleBot(TG_BOT_TOKEN)
-        bot.send_message(admin_id, message)
-    except Exception as e:
-        print(e)
-
-def sendMessageToTg(message):
-    thread = threading.Thread(target=threadSendTelegramMessage, args=(message,))
-    thread.start()
+    generateMap()
 
 
 

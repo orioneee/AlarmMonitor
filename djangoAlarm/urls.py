@@ -27,6 +27,8 @@ urlpatterns = [
     path('loadCities/', views.syncCities),
     path('registerFcmToken/', views.registerFcmToken),
     path('applyAlarmHook/', views.applyAlarmHook),
+    path('genMap/', views.genMap),
+    path("alarm_map", views.getAlarmMap),
     path('hasActiveAlarms/<int:regionId>/', views.hasActiveAlarms),
     path('synchrinizeAlarms/', views.syncAlarms),
     path('static/<path:path>', views.static),

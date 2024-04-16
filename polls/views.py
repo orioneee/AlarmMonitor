@@ -8,14 +8,15 @@ from django.shortcuts import render
 
 # Create your views here.
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 import json
 
 from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import messaging
 
+from polls.alarmMapJenerator import generateMap, sendMessageToTg
 from polls.management.commands.applyapihook import applyApiHook
-from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms, sendMessageToTg
+from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms
 from polls.models import Region, ActiveAlarm, UserFcmToken
 
 vinnitsiaId = 155
@@ -144,6 +145,23 @@ def isChild(region: Region, parent: Region):
     return isChild(region.childrenOf, parent)
 
 
+def genMap(request):
+    threading.Thread(target=generateMap).start()
+
+    return JsonResponse({'status': 'ok'}, status=200)
+
+
+def getAlarmMap(request):
+    image_path = "alarm_map.png"
+    if not os.path.exists(image_path):
+        return JsonResponse({'error': 'Map not generated yet'}, status=400)
+
+    with open(image_path, 'rb') as image_file:
+        image_data = image_file.read()
+
+    return HttpResponse(image_data, content_type='image/png')
+
+
 @csrf_exempt
 def alarmHook(request):
     try:
@@ -182,6 +200,7 @@ def alarmHook(request):
             except ObjectDoesNotExist:
                 return JsonResponse({'error': 'Alarm not found'}, status=200)
 
+        threading.Thread(target=generateMap).start()
         return JsonResponse({'status': 'ok'}, status=200)
     except Exception as e:
         return JsonResponse({

@@ -3,5 +3,6 @@
 /.idea/
 key.json
 Secrets.py
+*.png
 
 
