@@ -13,6 +13,7 @@ from polls.alarmMapJenerator import generateMap
 from polls.management.commands.applyapihook import applyApiHook
 from polls.models import Region, ActiveAlarm
 from django.contrib.auth.models import User
+import geopandas as gpd
 
 
 class Command(BaseCommand):
@@ -91,8 +92,8 @@ def loadCities():
                                 childrenOf=child_region
                             )
     print("Regions saved successfully")
-
-    generateMap()
+    states_layer = gpd.read_file("states/ukr_admbnda_adm1_sspe_20230201.shp", encoding='utf-8')
+    generateMap(states_layer)
 
 
 

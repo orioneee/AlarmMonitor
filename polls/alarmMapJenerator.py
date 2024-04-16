@@ -1,5 +1,6 @@
 import os
 import threading
+import time
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ from Secrets import TG_BOT_TOKEN
 from polls.models import Region, ActiveAlarm
 
 
-def generateMap():
+def generateMap(states_layer):
     print("Generating map")
 
     states = Region.objects.filter(regionType="State")
@@ -24,14 +25,18 @@ def generateMap():
 
     print("Active alarms states ids:", activeAlarmsStatesIds)
 
-    create_alarm_map(activeAlarmsStatesIds)
+    create_alarm_map(activeAlarmsStatesIds, states_layer)
 
     print("Map generated")
 
 
-def create_alarm_map(active_alarm_ids):
-    states_shapefile = "states/ukr_admbnda_adm1_sspe_20230201.shp"
-    states_layer = gpd.read_file(states_shapefile, encoding='utf-8')
+def create_alarm_map(active_alarm_ids, states_layer):
+    message = ""
+
+    start_reading_time = time.time()
+
+    message += "Reading shapefile time: " + str(time.time() - start_reading_time) + "\n"
+    start_plotting_time = time.time()
     name_to_id = {
         3: "Хмельницька",
         4: "Вінницька",
@@ -62,6 +67,7 @@ def create_alarm_map(active_alarm_ids):
     }
 
     admin_names = [name_to_id[id] for id in active_alarm_ids]
+    alarmed_states = states_layer[states_layer['ADM1_UA'].isin(admin_names)]
 
     default_color = "#5D6D7E"
     alarm_color = "#E74C3C"
@@ -71,29 +77,29 @@ def create_alarm_map(active_alarm_ids):
 
     states_layer.plot(ax=ax, linewidth=0.3, color=default_color, legend=False, edgecolor='black')
 
-    for name in admin_names:
-        states_layer.loc[states_layer['ADM1_UA'] == name].plot(ax=ax, linewidth=0.3, edgecolor='black',
-                                                               color=alarm_color, legend=False)
+    alarmed_states.plot(ax=ax, linewidth=0.3, color=alarm_color, legend=False, edgecolor='black')
 
     output_path = "alarm_map.png"
     plt.savefig(output_path, bbox_inches='tight', pad_inches=0.1)
-
     plt.close()
+
+    message += "Plotting time: " + str(time.time() - start_plotting_time) + "\n"
 
     print("Sending to telegram")
 
-    sendAlarmMapToTg()
+    sendAlarmMapToTg(message)
 
     print("Sent to telegram")
 
-def sendAlarmMapToTg():
+
+def sendAlarmMapToTg(message: str = ""):
     admin_id = 800918003
 
     bot = telebot.TeleBot(TG_BOT_TOKEN)
 
     if os.path.exists("alarm_map.png"):
         with open('alarm_map.png', 'rb') as photo:
-            bot.send_photo(admin_id, photo)
+            bot.send_photo(admin_id, photo, caption=message)
 
     else:
         bot.send_message(admin_id, "Map not generated yet")
