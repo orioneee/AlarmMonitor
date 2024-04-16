@@ -21,11 +21,6 @@ from polls.models import Region, ActiveAlarm, UserFcmToken
 import geopandas as gpd
 vinnitsiaId = 155
 
-states_layer = gpd.read_file("states/ukr_admbnda_adm1_sspe_20230201.shp", encoding='utf-8')
-
-
-
-
 
 def index(request):
     return JsonResponse({'foo': 'bar'}, status=200)
@@ -151,7 +146,7 @@ def isChild(region: Region, parent: Region):
 
 
 def genMap(request):
-    threading.Thread(target=generateMap, args=(states_layer,)).start()
+    threading.Thread(target=generateMap).start()
 
     return JsonResponse({'status': 'ok'}, status=200)
 
@@ -205,7 +200,7 @@ def alarmHook(request):
             except ObjectDoesNotExist:
                 return JsonResponse({'error': 'Alarm not found'}, status=200)
 
-        threading.Thread(target=generateMap, args=(states_layer,)).start()
+        threading.Thread(target=generateMap).start()
         return JsonResponse({'status': 'ok'}, status=200)
     except Exception as e:
         return JsonResponse({

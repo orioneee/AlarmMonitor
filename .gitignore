@@ -3,6 +3,6 @@
 /.idea/
 key.json
 Secrets.py
-*.png
+alarm_map.png
 
 

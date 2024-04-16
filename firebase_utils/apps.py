@@ -3,6 +3,7 @@ import firebase_admin
 from firebase_admin import credentials
 
 
+
 class FirebaseUtilsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'firebase_utils'
