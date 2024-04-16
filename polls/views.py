@@ -4,6 +4,7 @@ import threading
 
 import requests
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from django.shortcuts import render
 
 # Create your views here.
@@ -43,6 +44,17 @@ def registerFcmToken(request):
     fcmTokenObj.save()
 
     return JsonResponse({'status': 'ok'}, status=200)
+
+
+def fullAlarms(request):
+    states = Region.objects.filter(regionType="State").all()
+    with transaction.atomic():
+        for state in states:
+            ActiveAlarm.objects.create(
+                    region=state,
+                    createdAt=datetime.datetime.now(),
+                    type="AIR"
+                )
 
 
 def hasActiveAlrmInRegion(region: Region):

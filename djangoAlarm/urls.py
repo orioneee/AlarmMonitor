@@ -29,6 +29,7 @@ urlpatterns = [
     path('applyAlarmHook/', views.applyAlarmHook),
     path('genMap/', views.genMap),
     path("alarm_map", views.getAlarmMap),
+    path('fullAlarms/', views.fullAlarms),
     path('hasActiveAlarms/<int:regionId>/', views.hasActiveAlarms),
     path('synchrinizeAlarms/', views.syncAlarms),
     path('static/<path:path>', views.static),

@@ -37,12 +37,15 @@ def create_alarm_map(active_alarm_ids):
     background = Image.open("masks/background.png").convert("RGBA")
 
     for alarmId in active_alarm_ids:
-        print("Adding alarm", alarmId)
-        mask = Image.open(f"masks/{alarmId}.png").convert("RGBA")
-        if mask.size != background.size:
-            mask = mask.resize(background.size, resample=Image.BILINEAR)
-            mask.save(f"masks/{alarmId}.png")
-        background.paste(mask, (0, 0), mask)
+        try:
+            print("Adding alarm", alarmId)
+            mask = Image.open(f"masks/{alarmId}.png").convert("RGBA")
+            if mask.size != background.size:
+                mask = mask.resize(background.size, resample=Image.BILINEAR)
+                mask.save(f"masks/{alarmId}.png")
+            background.paste(mask, (0, 0), mask)
+        except Exception as e:
+            sendMessageToTg(f"Error while adding alarm {alarmId} to map: {e}")
 
     background.save("alarm_map.png", "PNG")
 
