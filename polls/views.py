@@ -56,6 +56,8 @@ def fullAlarms(request):
                     type="AIR"
                 )
 
+    return JsonResponse({'status': 'ok'}, status=200)
+
 
 def hasActiveAlrmInRegion(region: Region):
     alarms = ActiveAlarm.objects.filter(region=region).all()
