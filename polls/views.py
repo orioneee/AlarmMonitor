@@ -46,6 +46,9 @@ def registerFcmToken(request):
         if not login or not fcmToken:
             return JsonResponse({'error': 'login and fcmToken required'}, status=400)
 
+        if UserFcmToken.objects.filter(fcmToken=fcmToken).exists():
+            return JsonResponse({'status': 'token already exists'}, status=200)
+
         UserFcmToken.objects.create(
             user_login=login,
             fcmToken=fcmToken,
