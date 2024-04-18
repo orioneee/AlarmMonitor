@@ -39,7 +39,7 @@ def registerFcmToken(request):
         device_brand = headers.get('Device-Brand', "")
         device_name = headers.get('Device-Name', "")
         device_os = headers.get('Device-OS', "")
-        device_sdk = headers.get('Device-SDK', 0)
+        device_sdk = headers.get('Device-SDK-Version', 0)
         device_model = headers.get('Device-Model', "")
         app_version_code = headers.get('App-Version-Code', 0)
 
