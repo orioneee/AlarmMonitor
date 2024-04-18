@@ -19,9 +19,12 @@ class activeAlarmsAdmin(admin.ModelAdmin):
 
 
 class userFcmTokenAdmin(admin.ModelAdmin):
-    list_display = ('user_id', 'fcmToken', 'expiredAt')
+    list_display = ('user_login', 'fcmToken', 'device_name', 'os_name', 'device_android_sdk', 'app_version_code',
+                    'device_model', 'expiredAt')
 
-    ordering = ('expiredAt',)
+    list_filter = ('user_login', 'device_name', 'os_name', 'device_android_sdk', 'app_version_code', 'device_model',
+                   'expiredAt')
+    ordering = ('-expiredAt',)
 
 
 admin.site.register(Region, RegionAdmin)

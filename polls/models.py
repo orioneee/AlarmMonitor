@@ -36,6 +36,12 @@ class ActiveAlarm(models.Model):
 
 
 class UserFcmToken(models.Model):
-    user_id = models.IntegerField()
+    user_login = models.CharField(max_length=100)
     fcmToken = models.CharField(max_length=500)
+    device_name = models.CharField(max_length=100, null=True, blank=True)
+    os_name = models.CharField(max_length=100, null=True, blank=True)
+    device_android_sdk = models.IntegerField(null=True, blank=True)
+    app_version_code = models.IntegerField( null=True, blank=True)
+    device_model = models.CharField(max_length=100, null=True, blank=True)
+
     expiredAt = models.DateTimeField()

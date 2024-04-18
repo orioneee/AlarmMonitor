@@ -29,21 +29,41 @@ def index(request):
 
 @csrf_exempt
 def registerFcmToken(request):
-    body = request.body.decode('utf-8')
-    data = json.loads(body)
-    fcmToken = data.get('fcmToken')
-    user_id = data.get('user_id')
+    try:
+        body = request.body.decode('utf-8')
+        data = json.loads(body)
+        login = data.get('login')
+        fcmToken = data.get('fcmToken')
 
-    # check if token already exists
-    fcmTokenObj = UserFcmToken.objects.filter(fcmToken=fcmToken).first()
-    if fcmTokenObj:
-        return JsonResponse({'status': 'Token already exists'}, status=200)
-    expiredAt = datetime.datetime.now() + datetime.timedelta(days=60)
-    fcmTokenObj = UserFcmToken(user_id=user_id, fcmToken=fcmToken, expiredAt=expiredAt)
+        headers = request.headers
+        device_brand = headers.get('Device-Brand', "")
+        device_name = headers.get('Device-Name', "")
+        device_os = headers.get('Device-OS', "")
+        device_sdk = headers.get('Device-SDK', 0)
+        device_model = headers.get('Device-Model', "")
+        app_version_code = headers.get('App-Version-Code', 0)
 
-    fcmTokenObj.save()
+        if not login or not fcmToken:
+            return JsonResponse({'error': 'login and fcmToken required'}, status=400)
 
-    return JsonResponse({'status': 'ok'}, status=200)
+        if UserFcmToken.objects.filter(user_login=login).exists():
+            UserFcmToken.objects.filter(user_login=login).delete()
+
+        UserFcmToken.objects.create(
+            user_login=login,
+            fcmToken=fcmToken,
+            device_name=device_name,
+            os_name=device_os,
+            device_android_sdk=device_sdk,
+            app_version_code=app_version_code,
+            device_model=device_brand + " " + device_model,
+            expiredAt=datetime.datetime.now() + datetime.timedelta(days=60)
+        )
+
+        return JsonResponse({'status': 'ok'}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 
 def fullAlarms(request):
@@ -58,6 +78,16 @@ def fullAlarms(request):
 
     return JsonResponse({'status': 'ok'}, status=200)
 
+def getAllDistrict(request):
+    districts = Region.objects.filter(regionType="District").all()
+    result = []
+    for district in districts:
+        result.append({
+            "regionId": district.regionId,
+            "regionName": district.regionName
+        })
+
+    return JsonResponse({'districts': result}, status=200)
 
 def hasActiveAlrmInRegion(region: Region):
     alarms = ActiveAlarm.objects.filter(region=region).all()

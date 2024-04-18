@@ -33,4 +33,5 @@ urlpatterns = [
     path('hasActiveAlarms/<int:regionId>/', views.hasActiveAlarms),
     path('synchrinizeAlarms/', views.syncAlarms),
     path('static/<path:path>', views.static),
+    path('getAllDistrict/', views.getAllDistrict),
 ]
