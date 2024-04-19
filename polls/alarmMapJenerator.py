@@ -55,13 +55,19 @@ def create_alarm_map(active_alarm_ids):
 
 
 def sendAlarmMapToTg(message: str = ""):
+    sendFileToTg("alarm_map.png", message)
+
+def sendFileToTg(file_path: str, message: str = ""):
     admin_id = 800918003
 
     bot = telebot.TeleBot(TG_BOT_TOKEN)
 
-    if os.path.exists("alarm_map.png"):
-        with open('alarm_map.png', 'rb') as photo:
-            bot.send_photo(admin_id, photo, caption=message)
+    if os.path.exists(file_path):
+        with open(file_path, 'rb') as file:
+            if file_path.endswith(".png"):
+                bot.send_photo(admin_id, file, caption=message)
+            else:
+                bot.send_document(admin_id, file, caption=message)
 
     else:
         bot.send_message(admin_id, "Map not generated yet")

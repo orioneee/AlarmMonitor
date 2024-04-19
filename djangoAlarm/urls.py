@@ -34,4 +34,5 @@ urlpatterns = [
     path('synchrinizeAlarms/', views.syncAlarms),
     path('static/<path:path>', views.static),
     path('getAllDistrict/', views.getAllDistrict),
+    path('makeBackup/', views.makeDbBackup),
 ]

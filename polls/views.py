@@ -1,14 +1,17 @@
 import datetime
 import os
 import threading
+import zipfile
+
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.serializers import serialize
 from django.db import transaction
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 import json
 from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import messaging
-from polls.alarmMapJenerator import generateMap, sendMessageToTg
+from polls.alarmMapJenerator import generateMap, sendMessageToTg, sendFileToTg
 from polls.management.commands.applyapihook import applyApiHook
 from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms
 from polls.models import Region, ActiveAlarm, UserFcmToken
@@ -159,6 +162,84 @@ def threadPushFinishAlarm(time: str):
     resp = messaging.send_each_for_multicast(message)
     for r in resp.responses:
         print(r.exception)
+
+
+def regionToJson(region: Region):
+    return {
+        "regionId": region.regionId,
+        "regionName": region.regionName,
+        "regionType": region.regionType,
+        "childrenOf": regionToJson(region.childrenOf) if region.childrenOf else None
+    }
+
+
+def alarmToJson(alarm: ActiveAlarm):
+    return {
+        "id": alarm.id,
+        "region": regionToJson(alarm.region),
+        "createdAt": alarm.createdAt,
+        "type": alarm.type
+    }
+
+
+def tokenToJson(token: UserFcmToken):
+    return {
+        "id": token.id,
+        "user_login": token.user_login,
+        "fcmToken": token.fcmToken,
+        "device_name": token.device_name,
+        "os_name": token.os_name,
+        "device_android_sdk": token.device_android_sdk,
+        "app_version_code": token.app_version_code,
+        "device_model": token.device_model,
+        "expiredAt": token.expiredAt.strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+
+def makeDbBackup(request):
+    print("Making backup")
+    # regions = Region.objects.all()
+    # alarms = ActiveAlarm.objects.all()
+    tokens = UserFcmToken.objects.all()
+
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    # with open(f"backup_regions.json", "w") as f:
+    #     json.dump([regionToJson(region) for region in regions], f, indent=4)
+    #
+    # with open(f"backup_alarms.json", "w") as f:
+    #     json.dump([alarmToJson(alarm) for alarm in alarms], f, indent=4)
+
+
+    data = [tokenToJson(token) for token in tokens]
+    print(data)
+    with open(f"backup_tokens.json", "w") as f:
+        f.write(json.dumps({
+            "tokens": data,
+        }, indent=4))
+
+    files_to_add = [
+        #     "backup_regions.json",
+        #     "backup_alarms.json",
+        "backup_tokens.json"
+    ]
+
+    with zipfile.ZipFile(f"db_backup_{current_time}.zip", 'w') as zipf:
+        for file_path in files_to_add:
+            file_name = os.path.basename(file_path)
+            zipf.write(file_path, arcname=file_name)
+
+    sendFileToTg(f"db_backup_{current_time}.zip", "Database backup")
+
+    # os.remove("backup_regions.json")
+    # os.remove("backup_alarms.json")
+    try:
+        os.remove("backup_tokens.json")
+        os.remove(f"db_backup_{current_time}.zip")
+    except Exception as e:
+        print(e)
+
+    return JsonResponse({'status': 'ok'}, status=200)
 
 
 def pushFinishAlarm(time: str):
