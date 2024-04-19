@@ -13,7 +13,6 @@ from polls.alarmMapJenerator import generateMap
 from polls.management.commands.applyapihook import applyApiHook
 from polls.models import Region, ActiveAlarm
 from django.contrib.auth.models import User
-import geopandas as gpd
 
 
 class Command(BaseCommand):
@@ -36,13 +35,13 @@ class Command(BaseCommand):
         self.stdout.write("Synchronizing database")
         self.stdout.write("Loading cities")
         loadCities()
-        for i in range(60):
-            self.stdout.write(f"Waiting for {60 - i} seconds")
-            time.sleep(1)
+        for i in range(6):
+            self.stdout.write(f"Waiting for {60 - i * 10} seconds")
+            time.sleep(10)
         synchronizeAlarms()
-        for i in range(30):
-            self.stdout.write(f"Waiting for {60 - i} seconds")
-            time.sleep(1)
+        for i in range(6):
+            self.stdout.write(f"Waiting for {60 - i * 10} seconds")
+            time.sleep(10)
 
         print("Applying webhook")
         applyApiHook()
@@ -95,8 +94,6 @@ def loadCities():
                             )
 
     print("Regions saved successfully")
-
-
 
 
 def synchronizeAlarms():

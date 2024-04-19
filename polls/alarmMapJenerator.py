@@ -2,8 +2,6 @@ import os
 import threading
 import time
 
-import geopandas as gpd
-import matplotlib.pyplot as plt
 import telebot
 from PIL import Image
 

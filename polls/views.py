@@ -1,26 +1,19 @@
 import datetime
 import os
 import threading
-
-import requests
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.shortcuts import render
-
-# Create your views here.
-
 from django.http import JsonResponse, HttpResponse
 import json
-
 from django.views.decorators.csrf import csrf_exempt
 from firebase_admin import messaging
-
 from polls.alarmMapJenerator import generateMap, sendMessageToTg
 from polls.management.commands.applyapihook import applyApiHook
 from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms
 from polls.models import Region, ActiveAlarm, UserFcmToken
-import geopandas as gpd
-vinnitsiaId = 155
+
+vinParrents = [4, 36, 155]
 
 
 def index(request):
@@ -65,18 +58,18 @@ def registerFcmToken(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-
 def fullAlarms(request):
     states = Region.objects.filter(regionType="State").all()
     with transaction.atomic():
         for state in states:
             ActiveAlarm.objects.create(
-                    region=state,
-                    createdAt=datetime.datetime.now(),
-                    type="AIR"
-                )
+                region=state,
+                createdAt=datetime.datetime.now(),
+                type="AIR"
+            )
 
     return JsonResponse({'status': 'ok'}, status=200)
+
 
 def getAllDistrict(request):
     districts = Region.objects.filter(regionType="District").all()
@@ -88,6 +81,7 @@ def getAllDistrict(request):
         })
 
     return JsonResponse({'districts': result}, status=200)
+
 
 def hasActiveAlrmInRegion(region: Region):
     alarms = ActiveAlarm.objects.filter(region=region).all()
@@ -206,6 +200,10 @@ def getAlarmMap(request):
     return HttpResponse(image_data, content_type='image/png')
 
 
+def isVinnitsiaParent(regionId: str):
+    return regionId in vinParrents
+
+
 @csrf_exempt
 def alarmHook(request):
     try:
@@ -216,28 +214,24 @@ def alarmHook(request):
         alarmType = data.get('alarmType')
         createdAt = data.get('createdAt')
 
+        if status == "Activate" and isVinnitsiaParent(regionId):
+            pushNewAlarm(createdAt)
+        elif isVinnitsiaParent(regionId):
+            pushFinishAlarm(createdAt)
+
         try:
             region = Region.objects.filter(regionId=regionId).first()
-            vinnitsiaRegion = Region.objects.filter(regionId=vinnitsiaId).first()
         except ObjectDoesNotExist:
             return JsonResponse({'error': 'Region not found'}, status=200)
 
         sendMessageToTg("In region: " + region.regionName + " alarm is " + (
             "activated" if status == "Activate" else "deactivated") + " type: " + alarmType)
 
-        print("Is child:", isChild(vinnitsiaRegion, region))
-
         if status == "Activate":
-            if isChild(vinnitsiaRegion, region):
-                pushNewAlarm(createdAt)
-
             alarm = ActiveAlarm(region=region, type=alarmType, createdAt=createdAt)
             alarm.save()
         else:
             try:
-                if isChild(vinnitsiaRegion, region):
-                    pushFinishAlarm(createdAt)
-
                 alarms = ActiveAlarm.objects.filter(region=region).all()
                 for alarm in alarms:
                     alarm.delete()
