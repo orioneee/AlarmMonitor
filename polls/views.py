@@ -143,8 +143,7 @@ def threadPushNewAlarm(time: str):
 
 def pushNewAlarm(time: str):
     print("Pushing new alarm")
-    thread = threading.Thread(target=threadPushNewAlarm, args=(datatimeToTimeStr(time),))
-    thread.start()
+    threadPushNewAlarm(datatimeToTimeStr(time))
 
 
 def threadPushFinishAlarm(time: str):
@@ -244,8 +243,7 @@ def makeDbBackup(request):
 
 def pushFinishAlarm(time: str):
     print("Pushing finish alarm")
-    thread = threading.Thread(target=threadPushFinishAlarm, args=(datatimeToTimeStr(time),))
-    thread.start()
+    threadPushFinishAlarm(datatimeToTimeStr(time))
 
 
 def datatimeToTimeStr(dt: str):
