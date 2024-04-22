@@ -14,7 +14,7 @@ class Command(BaseCommand):
 
 def applyApiHook():
     body = {
-        "webHookUrl": "https://alarmmonitor.onrender.com/alarmHook/"
+        "webHookUrl": "https://alarm-monitor.onrender.com/alarmHook/"
     }
     url = "https://api.ukrainealarm.com/api/v3/webhook"
     headers = {
