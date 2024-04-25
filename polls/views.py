@@ -4,7 +4,6 @@ import threading
 import zipfile
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.core.serializers import serialize
 from django.db import transaction
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
@@ -16,7 +15,7 @@ from polls.management.commands.applyapihook import applyApiHook
 from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms
 from polls.models import Region, ActiveAlarm, UserFcmToken
 
-vinParrents = ["4", "36", '155']
+vinParrents = [4, 36, 155]
 
 
 def index(request):
@@ -124,15 +123,17 @@ def hook(request):
     return JsonResponse({'status': 'ok'}, status=200)
 
 
-def threadPushNewAlarm(time: str):
+def pushNewAlarm(time: str):
     fcmTokens = UserFcmToken.objects.all()
+    if not fcmTokens or len(fcmTokens) == 0:
+        return
     registration_ids = [token.fcmToken for token in fcmTokens]
     print(registration_ids)
     message = messaging.MulticastMessage(
         data={
             "type": "alarm",
             "isStarting": "1",
-            "time": time,
+            "time": datatimeToTimeStr(time),
         },
         tokens=registration_ids,
     )
@@ -141,20 +142,17 @@ def threadPushNewAlarm(time: str):
         print(r.exception)
 
 
-def pushNewAlarm(time: str):
-    print("Pushing new alarm")
-    threadPushNewAlarm(datatimeToTimeStr(time))
-
-
-def threadPushFinishAlarm(time: str):
+def pushFinishAlarm(time: str):
     fcmTokens = UserFcmToken.objects.all()
+    if not fcmTokens or len(fcmTokens) == 0:
+        return
     registration_ids = [token.fcmToken for token in fcmTokens]
     print(registration_ids)
     message = messaging.MulticastMessage(
         data={
             "type": "alarm",
             "isStarting": "0",
-            "time": time,
+            "time": datatimeToTimeStr(time),
         },
         tokens=registration_ids,
     )
@@ -209,7 +207,6 @@ def makeDbBackup(request):
     # with open(f"backup_alarms.json", "w") as f:
     #     json.dump([alarmToJson(alarm) for alarm in alarms], f, indent=4)
 
-
     data = [tokenToJson(token) for token in tokens]
     print(data)
     with open(f"backup_tokens.json", "w") as f:
@@ -239,11 +236,6 @@ def makeDbBackup(request):
         print(e)
 
     return JsonResponse({'status': 'ok'}, status=200)
-
-
-def pushFinishAlarm(time: str):
-    print("Pushing finish alarm")
-    threadPushFinishAlarm(datatimeToTimeStr(time))
 
 
 def datatimeToTimeStr(dt: str):
@@ -283,7 +275,6 @@ def isVinnitsiaParent(regionId: str):
     return regionId in vinParrents
 
 
-@csrf_exempt
 def alarmHook(request):
     try:
         body = request.body.decode('utf-8')
@@ -293,8 +284,8 @@ def alarmHook(request):
         alarmType = data.get('alarmType')
         createdAt = data.get('createdAt')
 
-        # if regionId not in vinParrents:
-        #     return JsonResponse({'status': 'ok'}, status=200)
+        if regionId not in vinParrents:
+            return JsonResponse({'status': 'ignoring'}, status=200)
 
         if status == "Activate" and isVinnitsiaParent(regionId):
             pushNewAlarm(createdAt)
@@ -323,10 +314,7 @@ def alarmHook(request):
         threading.Thread(target=generateMap).start()
         return JsonResponse({'status': 'ok'}, status=200)
     except Exception as e:
-        return JsonResponse({
-            'status': 'ok',
-            'error': str(e)
-        }, status=200)
+        return JsonResponse({"status": "error", "error": str(e)}, status=200)
 
 
 def syncCities(request):
