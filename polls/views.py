@@ -16,7 +16,7 @@ from polls.management.commands.applyapihook import applyApiHook
 from polls.management.commands.syncdatabase import loadCities, synchronizeAlarms
 from polls.models import Region, ActiveAlarm, UserFcmToken
 
-vinParrents = [4, 36, 155]
+vinParrents = ["4", "36", '155']
 
 
 def index(request):
