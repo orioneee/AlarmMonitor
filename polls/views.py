@@ -293,8 +293,8 @@ def alarmHook(request):
         alarmType = data.get('alarmType')
         createdAt = data.get('createdAt')
 
-        if regionId not in vinParrents:
-            return JsonResponse({'status': 'ok'}, status=200)
+        # if regionId not in vinParrents:
+        #     return JsonResponse({'status': 'ok'}, status=200)
 
         if status == "Activate" and isVinnitsiaParent(regionId):
             pushNewAlarm(createdAt)
